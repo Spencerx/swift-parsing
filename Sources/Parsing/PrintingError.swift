@@ -22,7 +22,7 @@ enum PrintingError: Error {
   @usableFromInline
   var context: Context {
     switch self {
-    case let .failed(context), let .manyFailed(_, context):
+    case .failed(let context), .manyFailed(_, let context):
       return context
     }
   }
@@ -32,7 +32,7 @@ enum PrintingError: Error {
     func flatten(_ depth: Int = 0) -> (any Error) -> [(depth: Int, error: any Error)] {
       { error in
         switch error {
-        case let PrintingError.manyFailed(errors, _):
+        case PrintingError.manyFailed(let errors, _):
           return errors.flatMap(flatten(depth + 1))
         default:
           return [(depth, error)]
@@ -43,12 +43,12 @@ enum PrintingError: Error {
     switch self {
     case .failed:
       return self
-    case let .manyFailed(errors, context):
+    case .manyFailed(let errors, let context):
       return .manyFailed(
         errors.flatMap(flatten())
           .sorted {
             switch ($0.error, $1.error) {
-            case let (lhs as PrintingError, rhs as PrintingError):
+            case (let lhs as PrintingError, let rhs as PrintingError):
               return lhs.context > rhs.context
             default:
               return $0.depth > $1.depth
@@ -88,10 +88,10 @@ extension PrintingError: CustomDebugStringConvertible {
   @usableFromInline
   var debugDescription: String {
     switch self.flattened() {
-    case let .failed(context):
+    case .failed(let context):
       return "error: \(context.debugDescription)"
 
-    case let .manyFailed(errors, _):
+    case .manyFailed(let errors, _):
       return errors.count == 1
         ? "\(errors[0])"
         : """
@@ -106,7 +106,7 @@ extension PrintingError: CustomDebugStringConvertible {
 extension PrintingError.Context {
   fileprivate static func > (lhs: Self, rhs: Self) -> Bool {
     switch (describe(lhs.input), describe(rhs.input)) {
-    case let (lhsInput?, rhsInput?):
+    case (let lhsInput?, let rhsInput?):
       return lhsInput.count > rhsInput.count
 
     default:
